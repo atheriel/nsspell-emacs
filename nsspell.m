@@ -6,8 +6,8 @@
 /* Declare mandatory GPL symbol.  */
 int plugin_is_GPL_compatible;
 
-static emacs_value
-create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[]);
+static emacs_value create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[]);
+static emacs_value emacs_error(emacs_env *env, const char *msg);
 
 /* Move a string from Emacs into Foundation. */
 NSString *
@@ -64,7 +64,6 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
 
   ptrdiff_t size = 0;
   NSString *nsstr = nsstr_from_emacs(env, args[0], &size);
-  NSRange word_range = NSMakeRange(0, size - 1);
 
   NSString *lang;
   if (nargs > 1) {
@@ -74,9 +73,32 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
     lang = nil; // When nil, the checker will use the system default.
   }
 
-  // Ask the spellchecker for suggestions.
+  NSInteger count = [checker countWordsInString:nsstr language:lang];
 
-  NSArray *suggestions = [checker guessesForWordRange:word_range
+  // For now, error out when we have more than one word.
+
+  if (count != 1) {
+    return emacs_error(env, "must provide a single word");
+  }
+
+  // Check spelling of the strings.
+  NSInteger checked = -1;
+  NSRange error_range = [checker checkSpellingOfString:nsstr
+					    startingAt:0
+					      language:lang
+						  wrap:NO
+				inSpellDocumentWithTag:0
+					     wordCount:&checked];
+
+  // The API seems to return a large number if it checks the whole
+  // string without issue. In that case, return t.
+  if (error_range.location >= [nsstr length]) {
+    return env->intern(env, "t");
+  }
+
+  // Otherwise, ask the spellchecker for suggestions.
+
+  NSArray *suggestions = [checker guessesForWordRange:error_range
                                              inString:nsstr
                                              language:lang
                                inSpellDocumentWithTag:0];
@@ -90,6 +112,16 @@ Flist_languages(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
   NSArray *languages = checker.availableLanguages;
   return str_list_from_ns(env, languages);
+}
+
+/* Emacs-level error. */
+static emacs_value
+emacs_error(emacs_env *env, const char *msg)
+{
+  emacs_value Qlist = env->intern(env, "error");
+  emacs_value emsg = env->make_string(env, msg, strlen(msg));
+  emacs_value args[] = {};
+  return env->funcall(env, Qlist, 0, args);
 }
 
 /* Accumulate arguments into a list. */
