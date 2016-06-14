@@ -6,22 +6,50 @@
 /* Declare mandatory GPL symbol.  */
 int plugin_is_GPL_compatible;
 
-/* Move a string from Emacs into C. */
-char *
-str_from_emacs(emacs_env *env, emacs_value value, ptrdiff_t *size)
+static emacs_value
+create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[]);
+
+/* Move a string from Emacs into Foundation. */
+NSString *
+nsstr_from_emacs(emacs_env *env, emacs_value value, ptrdiff_t *size)
 {
   env->copy_string_contents(env, value, NULL, size);
   char *str = malloc(*size);
   env->copy_string_contents(env, value, str, size);
-  return str;
+  NSString *nsstr = [NSString stringWithUTF8String:str]; // Copy!
+  free(str);
+  return nsstr;
 }
 
-/* Accumulate arguments into a list. */
 static emacs_value
-create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[])
+str_list_from_ns(emacs_env *env, NSArray *strings)
 {
-  emacs_value Qlist = env->intern(env, "list");
-  return env->funcall(env, Qlist, nargs, args);
+  // FIXME: Do we need to check that it's an NSArray<NSString>?
+
+  ptrdiff_t count = (ptrdiff_t) strings.count;
+
+  // Return the empty list, if need be.
+  if (count == 0) {
+    return env->intern(env, "nil");
+  }
+
+  // Otherwise, manually create an array of strings (as an Emacs list) from
+  // the array of strings.
+  emacs_value *rvals = malloc(sizeof(emacs_value) * count);
+  int rval_index = 0;
+
+  for (NSString *string in strings) {
+    const char *cstr = [string UTF8String]; // Shared reference!
+    emacs_value estr = env->make_string(env, cstr, strlen(cstr));
+    rvals[rval_index] = estr;
+    rval_index = rval_index + 1;
+  }
+
+  // FIXME: Emacs crashes when I do this... not sure why.
+  // [strings release];
+
+  // Return a list of strings.
+  return create_list(env, count, rvals);
 }
 
 static emacs_value
@@ -34,8 +62,7 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   
   // TODO: Ensure that the argument is a string.
   ptrdiff_t size = 0;
-  char *el_str = str_from_emacs(env, args[0], &size);
-  NSString *nsstr = [NSString stringWithUTF8String:el_str]; // Copy!
+  NSString *nsstr = nsstr_from_emacs(env, args[0], &size);
   NSRange word_range = NSMakeRange(0, size - 1);
 
   // Ask the spellchecker for suggestions.
@@ -45,34 +72,15 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   					     language:nil
   			       inSpellDocumentWithTag:0];
 
-  ptrdiff_t count = (ptrdiff_t) suggestions.count;
+  return str_list_from_ns(env, suggestions);
+}
 
-  if (count == 0) { // Return the empty list, if need be.
-    return env->intern(env, "nil");
-  }
-
-  // Otherwise, manually create an array of strings (in Emacs) from
-  // the array of suggestions return from NSSpellChecker.
-
-  emacs_value *rvals = malloc(sizeof(emacs_value) * count);
-  int rval_index = 0;
-
-  for (NSString *suggestion in suggestions) {
-    const char *cstr = [suggestion UTF8String]; // Shared reference!
-    emacs_value estr = env->make_string(env, cstr, strlen(cstr));
-    rvals[rval_index] = estr;
-    rval_index = rval_index + 1;
-  }
-
-  // Clean up.
-  
-  free(el_str);
-  [nsstr release];
-  // FIXME: Emacs crashes when I do this... not sure why.
-  // [suggestions release];
-
-  // Return a list of suggestions.
-  return create_list(env, count, rvals);
+/* Accumulate arguments into a list. */
+static emacs_value
+create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[])
+{
+  emacs_value Qlist = env->intern(env, "list");
+  return env->funcall(env, Qlist, nargs, args);
 }
 
 /* Bind NAME to FUN.  */
