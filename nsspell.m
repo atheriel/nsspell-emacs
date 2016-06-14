@@ -59,20 +59,37 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
 
   // Turn an Emacs string into a Foundation one.
-  
-  // TODO: Ensure that the argument is a string.
+
+  // TODO: Ensure that the arguments are strings.
+
   ptrdiff_t size = 0;
   NSString *nsstr = nsstr_from_emacs(env, args[0], &size);
   NSRange word_range = NSMakeRange(0, size - 1);
 
+  NSString *lang;
+  if (nargs > 1) {
+    ptrdiff_t lang_size = 0;
+    lang = nsstr_from_emacs(env, args[1], &lang_size);
+  } else {
+    lang = nil; // When nil, the checker will use the system default.
+  }
+
   // Ask the spellchecker for suggestions.
 
   NSArray *suggestions = [checker guessesForWordRange:word_range
-  					     inString:nsstr
-  					     language:nil
-  			       inSpellDocumentWithTag:0];
+                                             inString:nsstr
+                                             language:lang
+                               inSpellDocumentWithTag:0];
 
   return str_list_from_ns(env, suggestions);
+}
+
+static emacs_value
+Flist_languages(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
+{
+  NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
+  NSArray *languages = checker.availableLanguages;
+  return str_list_from_ns(env, languages);
 }
 
 /* Accumulate arguments into a list. */
@@ -112,9 +129,14 @@ emacs_module_init (struct emacs_runtime *ert)
   bind_function (env, lsym, env->make_function(env, amin, amax, csym, doc, data))
 
   DEFUN("nsspell-check-word",
-	Fcheck_word, 1, 1,
-	"docs.",
-	NULL);
+        Fcheck_word, 1, 2,
+        "List suggestions for WORD, optionally for LANGUAGE, from the \
+OS X spell checker.",
+        NULL);
+  DEFUN("nsspell-list-languages",
+        Flist_languages, 0, 0,
+        "List available languages for the OS X spell checker.",
+        NULL);
 
 #undef DEFUN
 
