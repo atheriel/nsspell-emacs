@@ -13,11 +13,18 @@ static emacs_value emacs_error(emacs_env *env, const char *msg);
 NSString *
 nsstr_from_emacs(emacs_env *env, emacs_value value, ptrdiff_t *size)
 {
-  env->copy_string_contents(env, value, NULL, size);
-  char *str = malloc(*size);
-  env->copy_string_contents(env, value, str, size);
+  ptrdiff_t rsize = 0;
+  env->copy_string_contents(env, value, NULL, &rsize);
+  char *str = malloc(rsize);
+  env->copy_string_contents(env, value, str, &rsize);
   NSString *nsstr = [NSString stringWithUTF8String:str]; // Copy!
   free(str);
+
+  // Return the size if the user asks for it.
+  if (size != NULL) {
+    *size = rsize;
+  }
+
   return nsstr;
 }
 
@@ -67,8 +74,7 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
 
   NSString *lang;
   if (nargs > 1) {
-    ptrdiff_t lang_size = 0;
-    lang = nsstr_from_emacs(env, args[1], &lang_size);
+    lang = nsstr_from_emacs(env, args[1], NULL);
   } else {
     lang = nil; // When nil, the checker will use the system default.
   }
@@ -102,6 +108,9 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
                                              inString:nsstr
                                              language:lang
                                inSpellDocumentWithTag:0];
+
+  [nsstr release];
+  [lang release];
 
   return str_list_from_ns(env, suggestions);
 }
