@@ -160,18 +160,20 @@ emacs_module_init (struct emacs_runtime *ert)
 #define DEFUN(lsym, csym, amin, amax, doc, data) \
   bind_function (env, lsym, env->make_function(env, amin, amax, csym, doc, data))
 
-  DEFUN("nsspell-check-word",
+  DEFUN("nsspell--check-word",
         Fcheck_word, 1, 2,
         "List suggestions for WORD, optionally for LANGUAGE, from the \
-OS X spell checker.",
+OS X spellchecker.\
+\\(fn WORD [LANGUAGE])",
         NULL);
-  DEFUN("nsspell-list-languages",
+  DEFUN("nsspell--list-languages",
         Flist_languages, 0, 0,
-        "List available languages for the OS X spell checker.",
+        "List available languages for the OS X spell checker.\
+\\(fn)",
         NULL);
 
 #undef DEFUN
 
-  provide (env, "nsspell");
+  provide (env, "nsspell-native");
   return 0;
 }
