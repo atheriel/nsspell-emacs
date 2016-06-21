@@ -11,4 +11,9 @@
 	   (require 'nsspell-native nil 'noerror))
   (setq nsspell--available t))
 
+(defun nsspell-dictionary-p (dict)
+  "Return t if DICT is an available language from the OS X spell
+checker."
+  (not (null (member dict (nsspell--list-languages)))))
+
 (provide 'nsspell)
