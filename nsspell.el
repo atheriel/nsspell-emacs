@@ -4,6 +4,10 @@
   (interactive)
   nsspell--available)
 
+;; These symbols are used by the native module to signal errors.
+(define-error 'no-words-in-string "No words in string")
+(define-error 'wrong-number-of-words "Wrong number of words")
+
 ;; We can only load this on Mac OS X systems for Emacs versions that
 ;; support dynamic modules.
 (when (and (eq system-type 'darwin)

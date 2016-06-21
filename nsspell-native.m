@@ -7,7 +7,7 @@
 int plugin_is_GPL_compatible;
 
 static emacs_value create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[]);
-static emacs_value emacs_error(emacs_env *env, const char *msg);
+static bool stringp(emacs_env *env, emacs_value value);
 
 /* Move a string from Emacs into Foundation. */
 NSString *
@@ -65,12 +65,33 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   // First, we need the spell checker.
   NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
 
+  // Signal errors if the arguments are not strings.
+  if (!stringp(env, args[0])) {
+    emacs_value error_symbol = env->intern(env, "wrong-type-argument");
+    emacs_value error_data[2] = { env->intern(env, "stringp"),
+				  args[0] };
+    env->non_local_exit_signal(env, error_symbol,
+			       create_list(env, 2, error_data));
+  }
+  if (nargs > 1 && !stringp(env, args[1])) {
+    emacs_value error_symbol = env->intern(env, "wrong-type-argument");
+    emacs_value error_data[2] = { env->intern(env, "stringp"),
+				  args[1] };
+    env->non_local_exit_signal(env, error_symbol,
+			       create_list(env, 2, error_data));
+  }
+
   // Turn an Emacs string into a Foundation one.
-
-  // TODO: Ensure that the arguments are strings.
-
   ptrdiff_t size = 0;
   NSString *nsstr = nsstr_from_emacs(env, args[0], &size);
+
+  // Signal an error if the string contains no content.
+  if (size < 1) {
+    emacs_value error_symbol = env->intern(env, "no-words-in-string");
+    emacs_value error_data[1] = { args[0] };
+    env->non_local_exit_signal(env, error_symbol,
+			       create_list(env, 1, error_data));
+  }
 
   NSString *lang;
   if (nargs > 1) {
@@ -81,10 +102,13 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
 
   NSInteger count = [checker countWordsInString:nsstr language:lang];
 
-  // For now, error out when we have more than one word.
-
+  // Signal an error when we have more than one word.
   if (count != 1) {
-    return emacs_error(env, "must provide a single word");
+    emacs_value error_symbol = env->intern(env, "wrong-number-of-words");
+    emacs_value error_data[2] = { env->make_integer(env, 1),
+				  env->make_integer(env, count) };
+    env->non_local_exit_signal(env, error_symbol,
+			       create_list(env, 2, error_data));
   }
 
   // Check spelling of the strings.
@@ -123,14 +147,12 @@ Flist_languages(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
   return str_list_from_ns(env, languages);
 }
 
-/* Emacs-level error. */
-static emacs_value
-emacs_error(emacs_env *env, const char *msg)
+/* Check for the string type. */
+static bool
+stringp(emacs_env *env, emacs_value value)
 {
-  emacs_value Qlist = env->intern(env, "error");
-  emacs_value emsg = env->make_string(env, msg, strlen(msg));
-  emacs_value args[] = {};
-  return env->funcall(env, Qlist, 0, args);
+  emacs_value string = env->intern(env, "string");
+  return env->eq(env, env->type_of(env, value), string);
 }
 
 /* Accumulate arguments into a list. */
