@@ -1,4 +1,4 @@
--*- mode: gfm; fill-column: 80 -*-
+<!-- -*- mode: gfm; fill-column: 80 -*- -->
 
 `nsspell` is an Emacs package for interacting with the macOS spell checker. It
 makes use of the new dynamic module system for Emacs 25 in order to interface
@@ -18,20 +18,26 @@ possible to check more than one word at a time.
 The API currently looks as follows:
 
 ``` emacs-lisp
+(require 'nsspell)
+
+;; Check if the dynamic module has loaded correctly.
+(nsspell-is-available-p)
+	=> t
+
 ;; Check that a Canadian English dictionary is available.
 (nsspell-dictionary-p "en_CA")
 	=> t
 
-;; Low-level spell checking interface.
-(nsspell--check-word "piano")
+;; Spell checking interface.
+(nsspell-check-word "piano") ;; Use default dictionary.
 	=> t
-(nsspell--check-word "helli" "en_CA")
+(nsspell-check-word "helli" "en_CA")
 	=> ("hello" "hell" "hells" "belli" "elli")
 
 ;; List suggestions for any word.
-(nsspell--suggestions-for "helli")
+(nsspell-suggestions-for "helli")
 	=> ("hello" "hell" "hells" "belli" "elli")
-(nsspell--suggestions-for "hello" "en_CA")
+(nsspell-suggestions-for "hello" "en_CA")
 	=> ("hell" "hells" "hallo" "jello" "hellos" ...)
 ```
 
