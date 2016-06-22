@@ -8,6 +8,8 @@ int plugin_is_GPL_compatible;
 
 static emacs_value create_list(emacs_env *env, ptrdiff_t nargs, emacs_value args[]);
 static bool stringp(emacs_env *env, emacs_value value);
+static void bind_function(emacs_env *env, const char *name, emacs_value Sfun);
+static void provide (emacs_env *env, const char *feature);
 
 /* Move a string from Emacs into Foundation. */
 NSString *
