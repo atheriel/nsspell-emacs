@@ -220,20 +220,15 @@ emacs_module_init (struct emacs_runtime *ert)
 
   DEFUN("nsspell--check-word",
         Fcheck_word, 1, 2,
-        "List suggestions for WORD, optionally for LANGUAGE, from the \
-OS X spellchecker.\
-\\(fn WORD [LANGUAGE])",
+        "Low-level interface for `nsspell-check-word'.",
         NULL);
   DEFUN("nsspell--suggestions-for",
         Fsuggestions_for, 1, 2,
-        "List suggestions for WORD, optionally for LANGUAGE, from the \
-OS X spellchecker.\
-\\(fn WORD [LANGUAGE])",
+        "Low-level interface for `nsspell-suggestions-for'.",
         NULL);
-  DEFUN("nsspell--list-languages",
+  DEFUN("nsspell-list-languages",
         Flist_languages, 0, 0,
-        "List available languages for the OS X spell checker.\
-\\(fn)",
+        "List available languages/dictionaries for the OS X spell checker.",
         NULL);
 
 #undef DEFUN
