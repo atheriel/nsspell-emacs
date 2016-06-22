@@ -142,6 +142,31 @@ Fcheck_word(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
 }
 
 static emacs_value
+Fsuggestions_for(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
+{
+  NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
+  ptrdiff_t size = 0;
+  NSString *nsstr = nsstr_from_emacs(env, args[0], &size);
+  NSString *lang;
+  if (nargs > 1) {
+    lang = nsstr_from_emacs(env, args[1], NULL);
+  } else {
+    lang = nil; // When nil, the checker will use the system default.
+  }
+  NSRange word_range = NSMakeRange(0, [nsstr length]);
+
+  NSArray *suggestions = [checker guessesForWordRange:word_range
+                                             inString:nsstr
+                                             language:lang
+                               inSpellDocumentWithTag:0];
+
+  [nsstr release];
+  [lang release];
+
+  return str_list_from_ns(env, suggestions);
+}
+
+static emacs_value
 Flist_languages(emacs_env *env, ptrdiff_t nargs, emacs_value args[], void *data)
 {
   NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
@@ -195,6 +220,12 @@ emacs_module_init (struct emacs_runtime *ert)
 
   DEFUN("nsspell--check-word",
         Fcheck_word, 1, 2,
+        "List suggestions for WORD, optionally for LANGUAGE, from the \
+OS X spellchecker.\
+\\(fn WORD [LANGUAGE])",
+        NULL);
+  DEFUN("nsspell--suggestions-for",
+        Fsuggestions_for, 1, 2,
         "List suggestions for WORD, optionally for LANGUAGE, from the \
 OS X spellchecker.\
 \\(fn WORD [LANGUAGE])",

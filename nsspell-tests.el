@@ -16,6 +16,10 @@
   ;; Too many words.
   (should-error (nsspell--check-word "hells bells")))
 
+(ert-deftest test-nsspell--suggestions-for ()
+  "Test word suggestions in `nsspell-native'."
+  (should (< 0 (length (nsspell--suggestions-for "cello")))))
+
 (ert-deftest test-nsspell-dictionary-p ()
   "Tests the language listing capacity of `nsspell-native'."
   ;; It seems safe enough to assume that English is available.
